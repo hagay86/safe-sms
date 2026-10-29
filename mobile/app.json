@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "SafeSMS",
+    "slug": "safesms",
+    "scheme": "safesms",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0b1220"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "io.safesms.app"
+    },
+    "android": {
+      "package": "io.safesms.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0b1220"
+      }
+    },
+    "plugins": ["expo-secure-store"],
+    "extra": {
+      "apiUrl": "http://localhost:4000"
+    }
+  }
+}

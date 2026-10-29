@@ -1,0 +1,154 @@
+// SafeSMS Prisma schema
+// Models three trust checkpoints: Company identity, Sender ID channel, Message Template content.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CONSUMER
+  COMPANY
+  ADMIN
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum DeliveryStatus {
+  DELIVERED
+  BLOCKED_UNKNOWN_SENDER
+  BLOCKED_UNAPPROVED_TEMPLATE
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  phone        String?  @unique
+  passwordHash String
+  role         Role     @default(CONSUMER)
+  displayName  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  companies         Company[]         @relation("CompanyOwner")
+  reviewedCompanies Company[]         @relation("CompanyReviewer")
+  reviewedSenders   SenderId[]        @relation("SenderReviewer")
+  reviewedTemplates MessageTemplate[] @relation("TemplateReviewer")
+  deliveries        SmsDelivery[]     @relation("Recipient")
+  auditEvents       AuditLog[]
+
+  @@index([role])
+}
+
+model Company {
+  id           String         @id @default(cuid())
+  name         String
+  legalName    String?
+  website      String?
+  description  String?
+  ownerId      String
+  owner        User           @relation("CompanyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  status       ApprovalStatus @default(PENDING)
+  reviewerId   String?
+  reviewer     User?          @relation("CompanyReviewer", fields: [reviewerId], references: [id])
+  reviewNote   String?
+  reviewedAt   DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  senderIds SenderId[]
+  templates MessageTemplate[]
+  deliveries SmsDelivery[]
+
+  @@index([status])
+  @@index([ownerId])
+}
+
+model SenderId {
+  id          String         @id @default(cuid())
+  companyId   String
+  company     Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  // The literal brand name or short code that will appear as the SMS sender
+  value       String
+  status      ApprovalStatus @default(PENDING)
+  reviewerId  String?
+  reviewer    User?          @relation("SenderReviewer", fields: [reviewerId], references: [id])
+  reviewNote  String?
+  reviewedAt  DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  templates  MessageTemplate[]
+  deliveries SmsDelivery[]
+
+  @@unique([value])
+  @@index([companyId])
+  @@index([status])
+}
+
+model MessageTemplate {
+  id          String         @id @default(cuid())
+  companyId   String
+  company     Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  senderIdId  String
+  senderId    SenderId       @relation(fields: [senderIdId], references: [id], onDelete: Cascade)
+  // Template body — use {{placeholders}} for variable text. Approval applies to the shape, not every literal render.
+  body        String
+  placeholders String[]      @default([])
+  status      ApprovalStatus @default(PENDING)
+  reviewerId  String?
+  reviewer    User?          @relation("TemplateReviewer", fields: [reviewerId], references: [id])
+  reviewNote  String?
+  reviewedAt  DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  deliveries SmsDelivery[]
+
+  @@index([companyId])
+  @@index([senderIdId])
+  @@index([status])
+}
+
+model SmsDelivery {
+  id           String         @id @default(cuid())
+  companyId    String
+  company      Company        @relation(fields: [companyId], references: [id])
+  senderIdId   String?
+  senderId     SenderId?      @relation(fields: [senderIdId], references: [id])
+  templateId   String?
+  template     MessageTemplate? @relation(fields: [templateId], references: [id])
+  recipientId  String
+  recipient    User           @relation("Recipient", fields: [recipientId], references: [id])
+  // The literal rendered message body delivered to the consumer
+  body         String
+  // What sender string the company attempted to use — kept so consumers can see flagged unknowns
+  claimedSender String
+  status        DeliveryStatus
+  createdAt     DateTime      @default(now())
+
+  @@index([recipientId, createdAt])
+  @@index([status])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id])
+  action     String
+  targetType String
+  targetId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}

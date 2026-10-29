@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: safesms-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: safesms
+      POSTGRES_PASSWORD: safesms
+      POSTGRES_DB: safesms
+    ports:
+      - "5432:5432"
+    volumes:
+      - safesms-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U safesms -d safesms"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    container_name: safesms-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://safesms:safesms@postgres:5432/safesms
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me}
+      NODE_ENV: production
+      PORT: "4000"
+    ports:
+      - "4000:4000"
+    profiles: ["full"]
+
+volumes:
+  safesms-pgdata:

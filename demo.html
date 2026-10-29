@@ -1,0 +1,701 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SafeSMS — Interactive Demo</title>
+<style>
+  :root {
+    --bg: #0b1220;
+    --surface: #141c2e;
+    --surface-2: #1c2540;
+    --border: #2a3350;
+    --text: #eef2ff;
+    --muted: #8a95b8;
+    --primary: #4f8cff;
+    --primary-2: #3a73e0;
+    --success: #4ade80;
+    --warning: #facc15;
+    --danger: #f87171;
+    --success-bg: #0f3020;
+    --warning-bg: #3a2f0b;
+    --danger-bg: #3a1414;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+  body { min-height: 100vh; }
+
+  /* App shell */
+  .shell { max-width: 1200px; margin: 0 auto; padding: 24px; }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; gap: 16px; flex-wrap: wrap; }
+  header .brand { display: flex; align-items: center; gap: 12px; }
+  header .logo { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, var(--primary), #8b5cf6); display: grid; place-items: center; font-weight: 800; }
+  header .brand h1 { margin: 0; font-size: 22px; }
+  header .brand p { margin: 0; color: var(--muted); font-size: 13px; }
+
+  .role-switch { display: flex; gap: 6px; background: var(--surface); padding: 4px; border-radius: 12px; border: 1px solid var(--border); }
+  .role-switch button { background: transparent; color: var(--muted); border: 0; padding: 8px 14px; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: 600; }
+  .role-switch button.active { background: var(--primary); color: white; }
+  .role-switch button:hover:not(.active) { color: var(--text); }
+
+  /* Layout */
+  .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 900px) { .grid-2 { grid-template-columns: 1.2fr 1fr; } }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+  .card h2 { margin: 0 0 4px; font-size: 18px; }
+  .card .sub { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .stack { display: flex; flex-direction: column; gap: 12px; }
+
+  /* Forms */
+  label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
+  input, textarea, select { width: 100%; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); padding: 10px 12px; border-radius: 8px; font-size: 14px; font-family: inherit; }
+  textarea { min-height: 90px; resize: vertical; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--primary); }
+  .field { margin-bottom: 12px; }
+
+  /* Buttons */
+  .btn { background: var(--primary); color: white; border: 0; padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; }
+  .btn:hover { background: var(--primary-2); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn.secondary { background: var(--surface-2); border: 1px solid var(--border); }
+  .btn.danger { background: var(--danger); }
+  .btn.success { background: var(--success); color: #08231a; }
+  .btn.ghost { background: transparent; color: var(--primary); }
+  .btn-row { display: flex; gap: 8px; }
+  .btn-sm { padding: 6px 10px; font-size: 12px; }
+
+  /* Status badges */
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; }
+  .badge.PENDING { background: var(--warning-bg); color: var(--warning); }
+  .badge.APPROVED { background: var(--success-bg); color: var(--success); }
+  .badge.REJECTED { background: var(--danger-bg); color: var(--danger); }
+  .badge.VERIFIED { background: var(--success-bg); color: var(--success); }
+  .badge.BLOCKED { background: var(--danger-bg); color: var(--danger); }
+
+  /* Inbox */
+  .msg { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+  .msg.verified { border-color: #1b3b29; }
+  .msg.blocked { border-color: #4a1b1b; }
+  .msg .head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; gap: 12px; }
+  .msg .sender { font-weight: 700; }
+  .msg .company { color: var(--muted); font-size: 12px; }
+  .msg .body { font-size: 14px; line-height: 1.5; }
+  .msg .warn { color: var(--danger); font-style: italic; font-size: 12px; margin-top: 8px; }
+  .msg .ts { color: var(--muted); font-size: 11px; margin-top: 8px; }
+
+  /* List items */
+  .item { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; }
+  .item .name { font-weight: 600; }
+  .item .meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .item .note { color: var(--warning); font-size: 12px; margin-top: 6px; font-style: italic; }
+  .item.empty { text-align: center; color: var(--muted); border-style: dashed; }
+
+  /* Toast */
+  .toast-wrap { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 8px; z-index: 100; }
+  .toast { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--primary); padding: 12px 16px; border-radius: 10px; min-width: 260px; max-width: 380px; animation: slideIn .25s ease; box-shadow: 0 6px 20px rgba(0,0,0,.4); font-size: 14px; }
+  .toast.success { border-left-color: var(--success); }
+  .toast.error { border-left-color: var(--danger); }
+  @keyframes slideIn { from { transform: translateY(8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  /* Helper text */
+  .helper { color: var(--muted); font-size: 13px; line-height: 1.55; }
+  .pill-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .pill { padding: 6px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; cursor: pointer; font-size: 13px; }
+  .pill.active { background: var(--primary); color: white; border-color: var(--primary); }
+  .scrim { padding: 12px 14px; border-radius: 10px; background: rgba(79, 140, 255, 0.08); border: 1px solid rgba(79, 140, 255, 0.25); color: var(--muted); font-size: 13px; }
+
+  /* Section heading */
+  h3.section { margin: 18px 0 8px; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+
+  /* Phone frame for consumer */
+  .phone { max-width: 380px; margin: 0 auto; background: var(--surface); border-radius: 28px; border: 1px solid var(--border); padding: 16px 16px 24px; box-shadow: 0 20px 50px rgba(0,0,0,.3); }
+  .phone .notch { width: 60px; height: 6px; background: #000; border-radius: 999px; margin: 0 auto 14px; }
+  .phone h2 { margin: 0 0 6px; }
+
+  .counts { display: flex; gap: 8px; margin: 8px 0 16px; }
+  .count { flex: 1; padding: 10px; border-radius: 10px; border: 1px solid; text-align: center; }
+  .count.verified { border-color: var(--success); }
+  .count.blocked { border-color: var(--danger); }
+  .count .n { font-size: 22px; font-weight: 700; line-height: 1; }
+  .count.verified .n { color: var(--success); }
+  .count.blocked .n { color: var(--danger); }
+  .count .l { font-size: 10px; text-transform: uppercase; color: var(--muted); margin-top: 4px; letter-spacing: 0.6px; }
+
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 24px 0; }
+  footer a { color: var(--primary); text-decoration: none; }
+  .reset-link { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 12px; text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div class="brand">
+      <div class="logo">S</div>
+      <div>
+        <h1>SafeSMS</h1>
+        <p>Interactive demo · only verified senders reach the inbox</p>
+      </div>
+    </div>
+    <div class="role-switch" id="roleSwitch">
+      <button data-role="consumer" class="active">📱 Consumer (Alice)</button>
+      <button data-role="company">🏢 Company (Acme Bank)</button>
+      <button data-role="admin">🛡️ Admin</button>
+    </div>
+  </header>
+
+  <main id="view"></main>
+
+  <footer>
+    Demo data resets when you reload · <button class="reset-link" id="resetBtn">Reset to seed</button>
+  </footer>
+</div>
+
+<div class="toast-wrap" id="toasts"></div>
+
+<script>
+"use strict";
+
+/* ---------- In-memory store ---------- */
+function uid() { return Math.random().toString(36).slice(2, 10); }
+function now() { return new Date().toISOString(); }
+
+function seed() {
+  const users = [
+    { id: 'u_admin', email: 'admin@safesms.io', role: 'ADMIN',    name: 'SafeSMS Admin',   phone: null },
+    { id: 'u_acme',  email: 'ops@acme.com',     role: 'COMPANY',  name: 'Acme Bank Ops',   phone: null },
+    { id: 'u_alice', email: 'alice@safesms.io', role: 'CONSUMER', name: 'Alice',           phone: '+15551110001' },
+  ];
+  const acme = { id: 'co_acme',   name: 'Acme Bank', ownerId: 'u_acme', status: 'APPROVED', description: 'A bank you can almost trust.', website: 'https://acme.example.com', reviewNote: 'KYC verified', createdAt: now() };
+  const fake = { id: 'co_fake',   name: 'Fake Bank', ownerId: 'u_acme', status: 'PENDING',  description: 'Pending review',              website: '',                          reviewNote: null, createdAt: now() };
+  const senders = [
+    { id: 's_acme',  companyId: 'co_acme', value: 'ACMEBANK',  status: 'APPROVED', reviewNote: null, createdAt: now() },
+    { id: 's_fake',  companyId: 'co_fake', value: 'FAKEBANK',  status: 'PENDING',  reviewNote: null, createdAt: now() },
+  ];
+  const templates = [
+    { id: 't_otp',   companyId: 'co_acme', senderIdId: 's_acme', body: 'Hi {{name}}, your Acme Bank OTP is {{code}}. Do not share it.', placeholders: ['name','code'], status: 'APPROVED', reviewNote: null, createdAt: now() },
+  ];
+  const deliveries = [
+    {
+      id: 'd1', companyId: 'co_acme', senderIdId: 's_acme', templateId: 't_otp', recipientId: 'u_alice',
+      body: 'Hi Alice, your Acme Bank OTP is 482913. Do not share it.',
+      claimedSender: 'ACMEBANK', status: 'DELIVERED', createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
+    },
+    {
+      id: 'd2', companyId: null, senderIdId: null, templateId: null, recipientId: 'u_alice',
+      body: 'URGENT: Your Acme account is locked. Tap http://ac-me.example/login to restore access now.',
+      claimedSender: 'Acme-Alerts', status: 'BLOCKED_UNKNOWN_SENDER', createdAt: new Date(Date.now() - 1000 * 60 * 2).toISOString(),
+    },
+  ];
+  return { users, companies: [acme, fake], senders, templates, deliveries };
+}
+
+let state = seed();
+let role = 'consumer';
+let ui = { sendForm: { senderIdId: null, templateId: null, recipientPhone: '+15551110001', vars: {} } };
+
+/* ---------- Helpers ---------- */
+function $(id) { return document.getElementById(id); }
+function el(tag, attrs = {}, children = []) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') node.className = v;
+    else if (k === 'html') node.innerHTML = v;
+    else if (k.startsWith('on') && typeof v === 'function') node.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (v !== false && v !== null && v !== undefined) node.setAttribute(k, v);
+  }
+  for (const c of [].concat(children)) {
+    if (c == null || c === false) continue;
+    node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+  }
+  return node;
+}
+function fmtTime(iso) {
+  const d = new Date(iso);
+  const today = new Date();
+  const sameDay = d.toDateString() === today.toDateString();
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return sameDay ? time : d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + time;
+}
+function toast(msg, kind = 'info') {
+  const t = el('div', { class: 'toast ' + (kind === 'success' ? 'success' : kind === 'error' ? 'error' : '') }, [msg]);
+  $('toasts').appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .25s'; }, 3500);
+  setTimeout(() => t.remove(), 3900);
+}
+
+function findCompany(id) { return state.companies.find(c => c.id === id); }
+function findSender(id)  { return state.senders.find(s => s.id === id); }
+function findTemplate(id){ return state.templates.find(t => t.id === id); }
+function findUser(id)    { return state.users.find(u => u.id === id); }
+
+/* ---------- Domain logic (mirrors backend) ---------- */
+function extractPlaceholders(body) {
+  const set = new Set();
+  for (const m of body.matchAll(/\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g)) set.add(m[1]);
+  return [...set];
+}
+
+function renderBody(body, declared, vars) {
+  const missing = declared.filter(p => !(p in vars) || !String(vars[p]).trim());
+  if (missing.length) throw new Error('Missing template variables: ' + missing.join(', '));
+  return body.replace(/\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g, (_, k) => vars[k]);
+}
+
+function sendSms({ companyId, senderIdId, templateId, recipientPhone, variables }) {
+  const co = findCompany(companyId);
+  if (!co) throw new Error('Company not found');
+  if (co.status !== 'APPROVED') throw new Error('Company is not approved to send messages');
+  const sender = findSender(senderIdId);
+  if (!sender || sender.companyId !== companyId) throw new Error('Sender ID not found for this company');
+  if (sender.status !== 'APPROVED') throw new Error('Sender ID is not approved');
+  const tpl = findTemplate(templateId);
+  if (!tpl || tpl.companyId !== companyId || tpl.senderIdId !== senderIdId) throw new Error('Template not found for this sender');
+  if (tpl.status !== 'APPROVED') throw new Error('Template is not approved');
+  const recipient = state.users.find(u => u.role === 'CONSUMER' && u.phone === recipientPhone);
+  if (!recipient) throw new Error('No SafeSMS user with phone ' + recipientPhone);
+  const body = renderBody(tpl.body, tpl.placeholders, variables || {});
+  const delivery = {
+    id: 'd_' + uid(),
+    companyId, senderIdId, templateId,
+    recipientId: recipient.id,
+    body, claimedSender: sender.value,
+    status: 'DELIVERED', createdAt: now(),
+  };
+  state.deliveries.unshift(delivery);
+  return delivery;
+}
+
+function simulateUnverified({ recipientPhone, claimedSender, body }) {
+  const recipient = state.users.find(u => u.role === 'CONSUMER' && u.phone === recipientPhone);
+  if (!recipient) throw new Error('No SafeSMS user with phone ' + recipientPhone);
+  state.deliveries.unshift({
+    id: 'd_' + uid(), companyId: null, senderIdId: null, templateId: null,
+    recipientId: recipient.id, body, claimedSender,
+    status: 'BLOCKED_UNKNOWN_SENDER', createdAt: now(),
+  });
+}
+
+/* ---------- View rendering ---------- */
+function render() {
+  const v = $('view');
+  v.innerHTML = '';
+  if (role === 'consumer') v.appendChild(renderConsumer());
+  else if (role === 'company') v.appendChild(renderCompany());
+  else if (role === 'admin') v.appendChild(renderAdmin());
+}
+
+/* === Consumer view === */
+function renderConsumer() {
+  const alice = state.users.find(u => u.id === 'u_alice');
+  const inbox = state.deliveries.filter(d => d.recipientId === alice.id);
+  const verifiedCount = inbox.filter(d => d.status === 'DELIVERED').length;
+  const blockedCount = inbox.length - verifiedCount;
+
+  const counts = el('div', { class: 'counts' }, [
+    el('div', { class: 'count verified' }, [
+      el('div', { class: 'n' }, [String(verifiedCount)]),
+      el('div', { class: 'l' }, ['Verified']),
+    ]),
+    el('div', { class: 'count blocked' }, [
+      el('div', { class: 'n' }, [String(blockedCount)]),
+      el('div', { class: 'l' }, ['Blocked']),
+    ]),
+  ]);
+
+  const list = el('div', {}, []);
+  if (inbox.length === 0) {
+    list.appendChild(el('div', { class: 'item empty' }, ['No messages yet.']));
+  } else {
+    for (const m of inbox) {
+      const verified = m.status === 'DELIVERED';
+      const co = m.companyId ? findCompany(m.companyId) : null;
+      const head = el('div', { class: 'head' }, [
+        el('div', {}, [
+          el('div', { class: 'sender' }, [m.claimedSender]),
+          el('div', { class: 'company' }, [verified ? (co?.name || 'Verified sender') : 'Unverified sender']),
+        ]),
+        el('span', { class: 'badge ' + (verified ? 'VERIFIED' : 'BLOCKED') }, [verified ? 'VERIFIED' : 'BLOCKED']),
+      ]);
+      const card = el('div', { class: 'msg ' + (verified ? 'verified' : 'blocked') }, [
+        head,
+        el('div', { class: 'body' }, [m.body]),
+        verified ? null : el('div', { class: 'warn' }, ['This sender is not registered with SafeSMS. Do not click links or share personal info.']),
+        el('div', { class: 'ts' }, [fmtTime(m.createdAt)]),
+      ]);
+      list.appendChild(card);
+    }
+  }
+
+  const phone = el('div', { class: 'phone' }, [
+    el('div', { class: 'notch' }),
+    el('h2', {}, ['Inbox']),
+    el('div', { class: 'helper' }, ['Signed in as ' + alice.name + ' · ' + alice.phone]),
+    counts,
+    list,
+  ]);
+
+  const explain = el('div', { class: 'card' }, [
+    el('h2', {}, ['What you\u2019re seeing']),
+    el('div', { class: 'sub' }, ['This is the consumer-facing inbox.']),
+    el('div', { class: 'helper' }, [
+      'Every message is tagged Verified or Blocked. Verified means the sender is a registered company and the message body matches an approved template. Blocked means the sender is unknown or the content doesn\u2019t match. Try the demo:',
+    ]),
+    el('ol', { class: 'helper', style: 'padding-left: 18px;' }, [
+      el('li', {}, ['Switch to Company \u2014 send a new SMS to ', el('code', {}, [alice.phone])]),
+      el('li', {}, ['Come back here \u2014 it appears at the top with VERIFIED badge']),
+      el('li', {}, ['Switch to Admin \u2014 use \u201CSimulate spoof SMS\u201D to inject a fake one']),
+      el('li', {}, ['Come back \u2014 the spoof shows up as BLOCKED with a danger warning']),
+    ]),
+  ]);
+
+  const grid = el('div', { class: 'grid grid-2' }, [phone, explain]);
+  return grid;
+}
+
+/* === Company view === */
+function renderCompany() {
+  const ownerId = 'u_acme';
+  const myCompanies = state.companies.filter(c => c.ownerId === ownerId);
+  const acme = myCompanies.find(c => c.id === 'co_acme');
+
+  const senders = state.senders.filter(s => s.companyId === 'co_acme');
+  const templates = state.templates.filter(t => t.companyId === 'co_acme');
+  const approvedSenders = senders.filter(s => s.status === 'APPROVED');
+  const approvedTemplates = templates.filter(t => t.status === 'APPROVED');
+
+  /* ---- Companies card ---- */
+  const companiesCard = el('div', { class: 'card' }, [
+    el('h2', {}, ['Your companies']),
+    el('div', { class: 'sub' }, ['Companies are reviewed by an admin before they can submit sender IDs.']),
+    ...myCompanies.map(c => el('div', { class: 'item' }, [
+      el('div', { class: 'row' }, [
+        el('div', {}, [
+          el('div', { class: 'name' }, [c.name]),
+          c.website ? el('div', { class: 'meta' }, [c.website]) : null,
+        ]),
+        el('span', { class: 'badge ' + c.status }, [c.status]),
+      ]),
+      c.reviewNote ? el('div', { class: 'note' }, ['Reviewer: ' + c.reviewNote]) : null,
+    ])),
+    newCompanyForm(),
+  ]);
+
+  /* ---- Sender IDs card ---- */
+  const sendersCard = el('div', { class: 'card' }, [
+    el('h2', {}, ['Sender IDs (Acme Bank)']),
+    el('div', { class: 'sub' }, ['The brand name consumers see as the SMS sender. Globally unique. Reviewed before use.']),
+    ...senders.map(s => el('div', { class: 'item' }, [
+      el('div', { class: 'row' }, [
+        el('div', { class: 'name' }, [s.value]),
+        el('span', { class: 'badge ' + s.status }, [s.status]),
+      ]),
+    ])),
+    senders.length === 0 ? el('div', { class: 'item empty' }, ['No sender IDs yet.']) : null,
+    newSenderForm(),
+  ]);
+
+  /* ---- Templates card ---- */
+  const templatesCard = el('div', { class: 'card' }, [
+    el('h2', {}, ['Message templates']),
+    el('div', { class: 'sub' }, ['Approved templates can be sent with variables substituted at send time.']),
+    ...templates.map(t => {
+      const sender = findSender(t.senderIdId);
+      return el('div', { class: 'item' }, [
+        el('div', { class: 'row' }, [
+          el('div', { class: 'name' }, [t.body]),
+          el('span', { class: 'badge ' + t.status }, [t.status]),
+        ]),
+        el('div', { class: 'meta' }, ['via ' + (sender ? sender.value : '?') + (t.placeholders.length ? ' · vars: ' + t.placeholders.join(', ') : '')]),
+      ]);
+    }),
+    templates.length === 0 ? el('div', { class: 'item empty' }, ['No templates yet.']) : null,
+    newTemplateForm(senders),
+  ]);
+
+  /* ---- Send SMS card ---- */
+  const sendCard = el('div', { class: 'card' }, [
+    el('h2', {}, ['Send an approved SMS']),
+    el('div', { class: 'sub' }, ['Pick an approved sender + template, give it a recipient and any variables. The trust chain is enforced: any non-APPROVED step blocks the send.']),
+    sendSmsForm({ company: acme, approvedSenders, approvedTemplates }),
+  ]);
+
+  return el('div', { class: 'grid grid-2' }, [
+    el('div', { class: 'stack' }, [companiesCard, sendersCard]),
+    el('div', { class: 'stack' }, [templatesCard, sendCard]),
+  ]);
+}
+
+function newCompanyForm() {
+  let nameInput, websiteInput;
+  return el('div', { style: 'margin-top: 12px;' }, [
+    el('h3', { class: 'section' }, ['Register a new company']),
+    el('div', { class: 'field' }, [
+      el('label', {}, ['Brand name']),
+      (nameInput = el('input', { placeholder: 'e.g. Globex Telecom' })),
+    ]),
+    el('div', { class: 'field' }, [
+      el('label', {}, ['Website (optional)']),
+      (websiteInput = el('input', { placeholder: 'https://...' })),
+    ]),
+    el('button', { class: 'btn', onclick: () => {
+      const name = nameInput.value.trim();
+      if (!name) return toast('Brand name is required', 'error');
+      state.companies.push({ id: 'co_' + uid(), name, ownerId: 'u_acme', status: 'PENDING', description: '', website: websiteInput.value.trim(), reviewNote: null, createdAt: now() });
+      toast('Submitted "' + name + '" for admin review', 'success');
+      render();
+    }}, ['Submit for review']),
+  ]);
+}
+
+function newSenderForm() {
+  let input;
+  return el('div', { style: 'margin-top: 12px;' }, [
+    el('h3', { class: 'section' }, ['Register a new sender ID']),
+    el('div', { class: 'field' }, [
+      el('label', {}, ['Sender ID']),
+      (input = el('input', { placeholder: 'e.g. ACMEPAY' })),
+    ]),
+    el('button', { class: 'btn', onclick: () => {
+      const v = input.value.trim().toUpperCase();
+      if (!v) return toast('Sender ID is required', 'error');
+      if (state.senders.some(s => s.value === v)) return toast('That sender ID is already taken', 'error');
+      state.senders.push({ id: 's_' + uid(), companyId: 'co_acme', value: v, status: 'PENDING', reviewNote: null, createdAt: now() });
+      toast('Submitted "' + v + '" for admin review', 'success');
+      render();
+    }}, ['Submit for review']),
+  ]);
+}
+
+function newTemplateForm(senders) {
+  let select, body;
+  return el('div', { style: 'margin-top: 12px;' }, [
+    el('h3', { class: 'section' }, ['Register a new template']),
+    el('div', { class: 'field' }, [
+      el('label', {}, ['Sender ID']),
+      (select = el('select', {}, senders.map(s => el('option', { value: s.id }, [s.value + ' (' + s.status + ')'])))),
+    ]),
+    el('div', { class: 'field' }, [
+      el('label', {}, ['Template body — use {{vars}} for variable text']),
+      (body = el('textarea', { placeholder: 'Hi {{name}}, your code is {{code}}.' })),
+    ]),
+    el('button', { class: 'btn', onclick: () => {
+      const senderIdId = select.value;
+      const text = body.value.trim();
+      if (!senderIdId || !text) return toast('Sender and body are required', 'error');
+      state.templates.push({ id: 't_' + uid(), companyId: 'co_acme', senderIdId, body: text, placeholders: extractPlaceholders(text), status: 'PENDING', reviewNote: null, createdAt: now() });
+      toast('Submitted template for admin review', 'success');
+      render();
+    }}, ['Submit for review']),
+  ]);
+}
+
+function sendSmsForm({ company, approvedSenders, approvedTemplates }) {
+  if (company.status !== 'APPROVED') {
+    return el('div', { class: 'scrim' }, ['Acme Bank must be APPROVED first. Switch to Admin to approve it.']);
+  }
+  if (approvedSenders.length === 0) {
+    return el('div', { class: 'scrim' }, ['You need at least one APPROVED sender ID. Submit one above and approve it from the Admin view.']);
+  }
+  if (approvedTemplates.length === 0) {
+    return el('div', { class: 'scrim' }, ['You need at least one APPROVED template. Submit one above and approve it from the Admin view.']);
+  }
+
+  let selectedSender = ui.sendForm.senderIdId && approvedSenders.find(s => s.id === ui.sendForm.senderIdId) ? ui.sendForm.senderIdId : approvedSenders[0].id;
+  ui.sendForm.senderIdId = selectedSender;
+  const templatesForSender = approvedTemplates.filter(t => t.senderIdId === selectedSender);
+  let selectedTemplate = ui.sendForm.templateId && templatesForSender.find(t => t.id === ui.sendForm.templateId) ? ui.sendForm.templateId : (templatesForSender[0]?.id || null);
+  ui.sendForm.templateId = selectedTemplate;
+
+  const senderRow = el('div', { class: 'pill-row' }, approvedSenders.map(s => {
+    const pill = el('button', { class: 'pill ' + (selectedSender === s.id ? 'active' : ''), onclick: () => {
+      ui.sendForm.senderIdId = s.id;
+      ui.sendForm.templateId = null;
+      ui.sendForm.vars = {};
+      render();
+    }}, [s.value]);
+    return pill;
+  }));
+
+  const templateRow = el('div', { class: 'pill-row' }, templatesForSender.length === 0
+    ? [el('div', { class: 'helper' }, ['No approved templates for this sender.'])]
+    : templatesForSender.map(t => el('button', { class: 'pill ' + (selectedTemplate === t.id ? 'active' : ''), onclick: () => {
+        ui.sendForm.templateId = t.id;
+        ui.sendForm.vars = {};
+        render();
+      }}, [t.body.length > 50 ? t.body.slice(0, 50) + '…' : t.body]))
+  );
+
+  const tpl = templatesForSender.find(t => t.id === selectedTemplate);
+  const phoneInput = el('input', { value: ui.sendForm.recipientPhone, oninput: e => ui.sendForm.recipientPhone = e.target.value });
+
+  const varInputs = (tpl?.placeholders || []).map(p => {
+    const inp = el('input', { value: ui.sendForm.vars[p] || '', oninput: e => ui.sendForm.vars[p] = e.target.value });
+    return el('div', { class: 'field' }, [el('label', {}, ['Variable: ' + p]), inp]);
+  });
+
+  return el('div', {}, [
+    el('h3', { class: 'section' }, ['Sender']),
+    senderRow,
+    el('h3', { class: 'section' }, ['Template']),
+    templateRow,
+    el('div', { class: 'field' }, [el('label', {}, ['Recipient phone']), phoneInput]),
+    ...varInputs,
+    el('div', { class: 'helper', style: 'margin-bottom: 8px;' }, ['Try +15551110001 — that\u2019s Alice\u2019s phone number.']),
+    el('button', { class: 'btn', onclick: () => {
+      try {
+        const d = sendSms({ companyId: 'co_acme', senderIdId: selectedSender, templateId: selectedTemplate, recipientPhone: ui.sendForm.recipientPhone, variables: ui.sendForm.vars });
+        toast('Sent! Switch to Consumer to see "' + d.body + '"', 'success');
+        ui.sendForm.vars = {};
+        render();
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    }}, ['Send SMS']),
+  ]);
+}
+
+/* === Admin view === */
+function renderAdmin() {
+  const pendingCompanies = state.companies.filter(c => c.status === 'PENDING');
+  const pendingSenders = state.senders.filter(s => s.status === 'PENDING');
+  const pendingTemplates = state.templates.filter(t => t.status === 'PENDING');
+  const total = pendingCompanies.length + pendingSenders.length + pendingTemplates.length;
+
+  function decideCompany(id, decision) {
+    const c = findCompany(id);
+    c.status = decision === 'APPROVE' ? 'APPROVED' : 'REJECTED';
+    c.reviewNote = decision === 'APPROVE' ? 'Approved by admin' : 'Rejected — failed review';
+    toast(c.name + ' ' + (decision === 'APPROVE' ? 'approved' : 'rejected'), 'success');
+    render();
+  }
+  function decideSender(id, decision) {
+    const s = findSender(id);
+    s.status = decision === 'APPROVE' ? 'APPROVED' : 'REJECTED';
+    toast('Sender ' + s.value + ' ' + (decision === 'APPROVE' ? 'approved' : 'rejected'), 'success');
+    render();
+  }
+  function decideTemplate(id, decision) {
+    const t = findTemplate(id);
+    t.status = decision === 'APPROVE' ? 'APPROVED' : 'REJECTED';
+    toast('Template ' + (decision === 'APPROVE' ? 'approved' : 'rejected'), 'success');
+    render();
+  }
+
+  const queue = el('div', { class: 'card' }, [
+    el('h2', {}, ['Moderation queue']),
+    el('div', { class: 'sub' }, [total === 0 ? 'Nothing pending. Nice work.' : total + ' item' + (total === 1 ? '' : 's') + ' awaiting your decision.']),
+    pendingCompanies.length ? el('h3', { class: 'section' }, ['Companies (' + pendingCompanies.length + ')']) : null,
+    ...pendingCompanies.map(c => el('div', { class: 'item' }, [
+      el('div', { class: 'row' }, [
+        el('div', {}, [
+          el('div', { class: 'name' }, [c.name]),
+          c.website ? el('div', { class: 'meta' }, [c.website]) : null,
+          c.description ? el('div', { class: 'meta' }, [c.description]) : null,
+        ]),
+        el('div', { class: 'btn-row' }, [
+          el('button', { class: 'btn btn-sm success', onclick: () => decideCompany(c.id, 'APPROVE') }, ['Approve']),
+          el('button', { class: 'btn btn-sm danger',  onclick: () => decideCompany(c.id, 'REJECT') }, ['Reject']),
+        ]),
+      ]),
+    ])),
+    pendingSenders.length ? el('h3', { class: 'section' }, ['Sender IDs (' + pendingSenders.length + ')']) : null,
+    ...pendingSenders.map(s => {
+      const co = findCompany(s.companyId);
+      return el('div', { class: 'item' }, [
+        el('div', { class: 'row' }, [
+          el('div', {}, [
+            el('div', { class: 'name' }, [s.value]),
+            el('div', { class: 'meta' }, ['Company: ' + (co ? co.name + ' (' + co.status + ')' : 'unknown')]),
+          ]),
+          el('div', { class: 'btn-row' }, [
+            el('button', { class: 'btn btn-sm success', onclick: () => decideSender(s.id, 'APPROVE') }, ['Approve']),
+            el('button', { class: 'btn btn-sm danger',  onclick: () => decideSender(s.id, 'REJECT') }, ['Reject']),
+          ]),
+        ]),
+      ]);
+    }),
+    pendingTemplates.length ? el('h3', { class: 'section' }, ['Templates (' + pendingTemplates.length + ')']) : null,
+    ...pendingTemplates.map(t => {
+      const co = findCompany(t.companyId);
+      const s = findSender(t.senderIdId);
+      return el('div', { class: 'item' }, [
+        el('div', {}, [
+          el('div', { class: 'name' }, [t.body]),
+          el('div', { class: 'meta' }, ['via ' + (s ? s.value : '?') + ' · ' + (co ? co.name : '')]),
+          t.placeholders.length ? el('div', { class: 'meta' }, ['Variables: ' + t.placeholders.join(', ')]) : null,
+        ]),
+        el('div', { class: 'btn-row', style: 'margin-top: 10px;' }, [
+          el('button', { class: 'btn btn-sm success', onclick: () => decideTemplate(t.id, 'APPROVE') }, ['Approve']),
+          el('button', { class: 'btn btn-sm danger',  onclick: () => decideTemplate(t.id, 'REJECT') }, ['Reject']),
+        ]),
+      ]);
+    }),
+    total === 0 ? el('div', { class: 'item empty' }, ['Nothing pending right now.']) : null,
+  ]);
+
+  /* ---- Simulate spoof ---- */
+  let spoofPhone, spoofSender, spoofBody;
+  const spoofCard = el('div', { class: 'card' }, [
+    el('h2', {}, ['Simulate a spoof SMS']),
+    el('div', { class: 'sub' }, ['This injects an unverified message into a consumer\u2019s inbox so you can see how SafeSMS flags it.']),
+    el('div', { class: 'field' }, [el('label', {}, ['Recipient phone']), (spoofPhone = el('input', { value: '+15551110001' }))]),
+    el('div', { class: 'field' }, [el('label', {}, ['Claimed sender (the spoofed name)']), (spoofSender = el('input', { value: 'Acme-Alerts' }))]),
+    el('div', { class: 'field' }, [el('label', {}, ['Body']), (spoofBody = el('textarea', { html: 'URGENT: Suspicious activity detected. Verify your account: http://ac-me.example/login' }))]),
+    el('button', { class: 'btn danger', onclick: () => {
+      try {
+        simulateUnverified({ recipientPhone: spoofPhone.value, claimedSender: spoofSender.value, body: spoofBody.value });
+        toast('Spoof injected. Switch to Consumer to see it as BLOCKED.', 'success');
+        render();
+      } catch (err) { toast(err.message, 'error'); }
+    }}, ['Inject spoof']),
+  ]);
+
+  /* ---- Activity log ---- */
+  const recent = state.deliveries.slice(0, 8);
+  const log = el('div', { class: 'card' }, [
+    el('h2', {}, ['Recent deliveries']),
+    el('div', { class: 'sub' }, ['Everything that landed in any consumer\u2019s inbox \u2014 verified or blocked.']),
+    ...(recent.length ? recent.map(d => {
+      const verified = d.status === 'DELIVERED';
+      return el('div', { class: 'item' }, [
+        el('div', { class: 'row' }, [
+          el('div', {}, [
+            el('div', { class: 'name' }, [d.claimedSender]),
+            el('div', { class: 'meta' }, [d.body.length > 80 ? d.body.slice(0, 80) + '…' : d.body]),
+          ]),
+          el('span', { class: 'badge ' + (verified ? 'VERIFIED' : 'BLOCKED') }, [verified ? 'VERIFIED' : 'BLOCKED']),
+        ]),
+        el('div', { class: 'meta' }, [fmtTime(d.createdAt)]),
+      ]);
+    }) : [el('div', { class: 'item empty' }, ['No deliveries yet.'])]),
+  ]);
+
+  return el('div', { class: 'grid grid-2' }, [
+    queue,
+    el('div', { class: 'stack' }, [spoofCard, log]),
+  ]);
+}
+
+/* ---------- Wire up ---------- */
+$('roleSwitch').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-role]');
+  if (!btn) return;
+  role = btn.dataset.role;
+  for (const b of $('roleSwitch').querySelectorAll('button')) b.classList.toggle('active', b.dataset.role === role);
+  ui.sendForm = { senderIdId: null, templateId: null, recipientPhone: '+15551110001', vars: {} };
+  render();
+});
+
+$('resetBtn').addEventListener('click', () => {
+  state = seed();
+  ui.sendForm = { senderIdId: null, templateId: null, recipientPhone: '+15551110001', vars: {} };
+  toast('Demo reset to seed data', 'success');
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
